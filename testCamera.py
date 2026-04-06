@@ -14,7 +14,7 @@ while True:
     if not ret:
         print("ERROR: Cannot read frame.")
         break
-
+    frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
     cv2.imshow("Camera Test", frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):

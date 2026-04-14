@@ -373,6 +373,11 @@ import time
 # ============================================================
 # CONFIGURATION
 # ============================================================
+
+import serial
+
+ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
+time.sleep(2)
 CAMERA_INDEX = 0
 
 # Set to True when running on Nvidia Jetson with USB camera
@@ -634,21 +639,42 @@ def decide_action(obstacles):
     return nudge, should_vibrate
 
 
-def send_command(nudge, vibrate):
-    if vibrate:
-        print(">>> VIBRATION MOTOR: ON")
-        # ser.write(b'V')
-    if nudge == "LEFT":
-        print(">>> NUDGE LEFT")
-        # ser.write(b'L')
-    elif nudge == "RIGHT":
-        print(">>> NUDGE RIGHT")
-        # ser.write(b'R')
-    else:
-        if not vibrate:
-            print(">>> ALL CLEAR")
-            # ser.write(b'S')
+# def send_command(nudge, vibrate):
+#     if vibrate:
+#         print(">>> VIBRATION MOTOR: ON")
+#         # ser.write(b'V')
+#     if nudge == "LEFT":
+#         print(">>> NUDGE LEFT")
+#         # ser.write(b'L')
+#     elif nudge == "RIGHT":
+#         print(">>> NUDGE RIGHT")
+#         # ser.write(b'R')
+#     else:
+#         if not vibrate:
+#             print(">>> ALL CLEAR")
+#             # ser.write(b'S')
+last_command = None
 
+def send_command(nudge, vibrate):
+    global last_command
+
+    command = ""
+
+    if nudge == "LEFT":
+        command += "L"
+    elif nudge == "RIGHT":
+        command += "R"
+
+    if vibrate:
+        command += "V"
+
+    if command == "":
+        command = "S"
+
+    if command != last_command:
+        print(f">>> Sending: {command}")
+        ser.write((command + "\n").encode())
+        last_command = command
 
 def mouse_callback(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:

@@ -1,12 +1,12 @@
 // Motor pins (change if needed)
 const int LEFT_MOTOR = 5;
 const int RIGHT_MOTOR = 6;
-const int VIBRATION_MOTOR = 9;
+// const int VIBRATION_MOTOR = 9;
 
 void setup() {
   pinMode(LEFT_MOTOR, OUTPUT);
   pinMode(RIGHT_MOTOR, OUTPUT);
-  pinMode(VIBRATION_MOTOR, OUTPUT);
+//   pinMode(VIBRATION_MOTOR, OUTPUT);
 }
 
 void loop() {
@@ -22,9 +22,9 @@ void loop() {
   analogWrite(RIGHT_MOTOR, 0);
   delay(1000);
 
-  // VIBRATION MOTOR TEST
-  analogWrite(VIBRATION_MOTOR, 255);
-  delay(2000);
-  analogWrite(VIBRATION_MOTOR, 0);
-  delay(2000);
+//   // VIBRATION MOTOR TEST
+//   analogWrite(VIBRATION_MOTOR, 255);
+//   delay(2000);
+//   analogWrite(VIBRATION_MOTOR, 0);
+//   delay(2000);
 }

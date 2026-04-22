@@ -1,3 +1,5 @@
+//MOTOR CODE 
+
 // Left drive motor
 const int ENA = 5;
 const int IN1 = 7;
@@ -95,6 +97,25 @@ void vibRight(int speed) {
   analogWrite(VIB_R_EN, speed);
 }
 
+//FORCE SENSOR CODE
+const int leftFSR = A0;
+const int rightFSR = A1;
+
+float smoothLeft = 0;
+float smoothRight = 0;
+
+float alpha = 0.2;
+
+void setup() {
+  Serial.begin(115200);
+}
+
+int smoothValue(float &smooth, int raw) {
+  smooth = alpha * raw + (1 - alpha) * smooth;
+  return (int)smooth;
+}
+
+
 
 void loop() {
 
@@ -104,31 +125,20 @@ void loop() {
 
     stopAll(); // reset every cycle
 
-    if (cmd == 'A:L') {
+    if (cmd == 'L') {
       moveLeft();
       vibRight(255);
     }
 
-    else if (cmd == 'A:R') {
+    else if (cmd == 'R') {
       moveRight();
       vibLeft(255);
     }
 
-    else if (cmd == 'A:S') {
+    else if (cmd == 'S') {
       stopAll();
     }
   }
-  int leftRaw = analogRead(leftFSR);
-  int rightRaw = analogRead(rightFSR);
-
-  int leftValue = smoothValue(smoothLeft, leftRaw);
-  int rightValue = smoothValue(smoothRight, rightRaw);
-
-  Serial.print("J:" + leftValue);
-  Serial.print(",");
-  Serial.println(rightValue);
-
-  delay(50);
 }
 
 

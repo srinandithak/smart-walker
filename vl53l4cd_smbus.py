@@ -315,8 +315,12 @@ class VL53L4CD:
         ready = False
         while time.time() < timeout:
             try:
-                val = self._read8(0x0089)
-                if val & 0x01:
+                # val = self._read8(0x0089)
+                # if val & 0x01:
+                #     ready = True
+                #     break
+                val = self._read8(0x0031)
+                if val == 0x03:
                     ready = True
                     break
                 # Also try checking the GPIO status register
@@ -354,9 +358,14 @@ class VL53L4CD:
     def stop_ranging(self):
         self._write8(0x0087, 0x00)
 
+    # def data_ready(self):
+    #     try:
+    #         return (self._read8(0x0089) & 0x01) == 0x01
+    #     except Exception:
+    #         return False
     def data_ready(self):
         try:
-            return (self._read8(0x0089) & 0x01) == 0x01
+            return self._read8(0x0031) == 0x03
         except Exception:
             return False
 

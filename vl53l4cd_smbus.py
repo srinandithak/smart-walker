@@ -109,12 +109,21 @@ class VL53L4CD:
         self._set_timing_budget(50)
 
         # Run a calibration ranging
+        # self.start_ranging()
+        # timeout = time.time() + 3.0
+        # while not self.data_ready():
+        #     if time.time() > timeout:
+        #         raise RuntimeError("VL53L4CD calibration timeout")
+        #     time.sleep(0.01)
+        # Run a calibration ranging
+        time.sleep(0.5)
         self.start_ranging()
-        timeout = time.time() + 3.0
+        time.sleep(0.1)
+        timeout = time.time() + 10.0
         while not self.data_ready():
             if time.time() > timeout:
                 raise RuntimeError("VL53L4CD calibration timeout")
-            time.sleep(0.01)
+            time.sleep(0.05)
         self.clear_interrupt()
         self.stop_ranging()
 

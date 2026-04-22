@@ -1,4 +1,4 @@
-How to run it
+#How to run it
 On the Jetson (two separate terminals, or use tmux):
 
 
@@ -8,4 +8,4 @@ On the nearby computer:
 
 
 python3 plot_force.py <jetson-ip>
-# e.g. python3 plot_force.py 192.168.1.42
+e.g. python3 plot_force.py 192.168.1.42

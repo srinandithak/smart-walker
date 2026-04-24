@@ -731,24 +731,49 @@ ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
 time.sleep(2)
 
 # ============================================================
-# ToF DISTANCE SENSOR SETUP (uses smbus2, no Adafruit needed)
-# vl53l4cd_smbus.py must be in the same folder as this file
+# FSR SOCKET BROADCAST SERVER (port 5005)
+# plot_force.py on a nearby laptop connects here
 # ============================================================
-TOF_AVAILABLE = False
-tof_sensor = None
-try:
-    from vl53l4cd_smbus import VL53L4CD
-    tof_sensor = VL53L4CD(bus=1, address=0x29)
-    tof_sensor.start_ranging()
-    TOF_AVAILABLE = True
-    print("ToF sensor: CONNECTED")
-except Exception as e:
-    print(f"ToF sensor: NOT FOUND ({e})")
-    print("Running in camera-only mode")
+import socket
+import threading
+
+clients = []
+clients_lock = threading.Lock()
+
+def handle_client(conn):
+    with clients_lock:
+        clients.append(conn)
+    try:
+        while True:
+            if conn.recv(1) == b'':
+                break
+    except:
+        pass
+    finally:
+        with clients_lock:
+            if conn in clients:
+                clients.remove(conn)
+        conn.close()
+
+def start_server(port=5005):
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(('0.0.0.0', port))
+    server.listen(5)
+    print(f"FSR broadcast server listening on port {port}")
+    while True:
+        conn, addr = server.accept()
+        print(f"plot_force client connected: {addr}")
+        threading.Thread(target=handle_client, args=(conn,), daemon=True).start()
+
+threading.Thread(target=start_server, daemon=True).start()
+
+# Latest distance reading from Arduino serial (updated each loop)
+tof_dist_mm = None
 
 # Distance thresholds in millimeters
-VIBRATE_DISTANCE_MM = 1220    # 4 feet
-CLOSE_DISTANCE_MM = 1830      # 6 feet
+VIBRATE_DISTANCE_MM = 1830    # 6 feet — warn user first
+CLOSE_DISTANCE_MM = 1220      # 4 feet — steer if user hasn't reacted
 
 # ============================================================
 # CONFIGURATION
@@ -816,20 +841,34 @@ def get_zone(cx):
         return "RIGHT"
 
 
-def read_tof_distance():
-    """Read distance from ToF sensor. Returns millimeters or None."""
-    if not TOF_AVAILABLE:
-        return None
-    try:
-        if tof_sensor.data_ready():
-            dist_mm = tof_sensor.get_distance()
-            tof_sensor.clear_interrupt()
-            if dist_mm < 20 or dist_mm > 2000:
-                return None
-            return dist_mm
-        return None
-    except Exception:
-        return None
+def read_serial():
+    """Read all pending Arduino serial lines. Updates tof_dist_mm, broadcasts FSR data."""
+    global tof_dist_mm
+    while ser.in_waiting:
+        try:
+            line = ser.readline().decode(errors='ignore').strip()
+        except Exception:
+            break
+        if line.startswith("D:"):
+            try:
+                val = int(line[2:])
+                if 20 <= val <= 4000:
+                    tof_dist_mm = val
+            except ValueError:
+                pass
+        elif "," in line:
+            try:
+                left, right = line.split(",")
+                int(left); int(right)
+                msg = (line + "\n").encode()
+                with clients_lock:
+                    for conn in list(clients):
+                        try:
+                            conn.sendall(msg)
+                        except:
+                            clients.remove(conn)
+            except:
+                pass
 
 
 def detect_floor_region(hsv_frame):
@@ -1057,7 +1096,7 @@ def mouse_callback(event, x, y, flags, param):
 print("Smart Walker Vision System")
 print(f"Rotated frame: {FRAME_WIDTH}x{FRAME_HEIGHT}")
 print(f"Jetson mode: {USE_JETSON}")
-print(f"ToF sensor: {'ACTIVE' if TOF_AVAILABLE else 'NOT CONNECTED'}")
+print("Arduino serial: /dev/ttyACM0")
 print("Press 'q' to quit | 'c' for snapshot | click for coordinates")
 print("-" * 50)
 
@@ -1071,16 +1110,16 @@ while True:
         break
 
     obstacles, debug_frame, mask = process_frame(frame)
-    tof_dist = read_tof_distance()
-    nudge, vibrate = decide_action(obstacles, tof_dist)
+    read_serial()
+    nudge, vibrate = decide_action(obstacles, tof_dist_mm)
     send_command(nudge, vibrate)
 
     # Show ToF distance on debug window
-    if tof_dist is not None:
-        dist_text = f"ToF: {tof_dist}mm ({tof_dist/304.8:.1f}ft)"
-        if tof_dist < VIBRATE_DISTANCE_MM:
+    if tof_dist_mm is not None:
+        dist_text = f"ToF: {tof_dist_mm}mm ({tof_dist_mm/304.8:.1f}ft)"
+        if tof_dist_mm < VIBRATE_DISTANCE_MM:
             tof_color = (0, 0, 255)
-        elif tof_dist < CLOSE_DISTANCE_MM:
+        elif tof_dist_mm < CLOSE_DISTANCE_MM:
             tof_color = (0, 255, 255)
         else:
             tof_color = (0, 255, 0)
@@ -1103,6 +1142,3 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
-if TOF_AVAILABLE and tof_sensor is not None:
-    tof_sensor.close()
-    print("ToF sensor stopped.")

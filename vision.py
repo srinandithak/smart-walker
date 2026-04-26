@@ -727,7 +727,7 @@ import serial
 # ============================================================
 # ARDUINO SERIAL SETUP
 # ============================================================
-ser = serial.Serial('COM6', 115200, timeout=1)
+ser = serial.Serial('COM5', 115200, timeout=1)
 time.sleep(2)
 
 # ============================================================
@@ -847,11 +847,13 @@ def read_serial():
     while ser.in_waiting:
         try:
             line = ser.readline().decode(errors='ignore').strip()
+            print(f"[SERIAL] {line}")
         except Exception:
             break
         if line.startswith("D:"):
             try:
                 val = int(line[2:])
+                print(f"[DEBUG] Got distance: {val}")
                 if 20 <= val <= 4000:
                     tof_dist_mm = val
             except ValueError:
